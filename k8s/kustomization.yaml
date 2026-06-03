@@ -11,4 +11,4 @@ resources:
 images:
 - name: romainecr.azurecr.io/landing-page
   newName: romainecr.azurecr.io/landing-page
-  newTag: 874dbef
+  newTag: aa4bade
