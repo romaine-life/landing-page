@@ -1,7 +1,7 @@
 image:
   repository: romainecr.azurecr.io/landing-page
   # Bumped by .github/workflows/build-and-deploy.yaml on every push to main.
-  tag: aa4bade
+  tag: 45e8c9e
   pullPolicy: IfNotPresent
 
 replicas: 1
