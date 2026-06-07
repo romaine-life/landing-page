@@ -21,4 +21,8 @@ Served from AKS (namespace `landing-page`) by a Node+Express container that stat
 
 ### 2026-05-07
 
-- Migrated off Azure Static Web Apps to AKS. Apex `romaine.life` is now served by a Node+Express container (`romainecr.azurecr.io/landing-page`) in namespace `landing-page`, behind the shared Envoy Gateway with a cert-manager-issued cert. Replaced `full-stack-deploy.yml` with `build-and-deploy.yaml` (mirrors my-homepage's pattern: ACR push + kustomize image bump + release tag). Frontend build step removed — Express serves `frontend/` directly
+- Migrated off Azure Static Web Apps to AKS. Apex `romaine.life` is now served by a Node+Express container (`romainecr.azurecr.io/landing-page`) in namespace `landing-page`, behind the shared Envoy Gateway with a cert-manager-issued cert. Replaced `full-stack-deploy.yml` with `build-and-deploy.yaml`. Frontend build step removed — Express serves `frontend/` directly.
+
+### 2026-06-07
+
+- Replaced app-level Kustomize with a Helm chart under `k8s/`. CI now bumps `k8s/values.yaml`, and Argo CD renders the chart directly.

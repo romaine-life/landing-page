@@ -1,0 +1,36 @@
+image:
+  repository: romainecr.azurecr.io/landing-page
+  # Bumped by .github/workflows/build-and-deploy.yaml on every push to main.
+  tag: aa4bade
+  pullPolicy: IfNotPresent
+
+replicas: 1
+
+serviceAccount:
+  name: infra-shared
+
+service:
+  port: 80
+  targetPort: http
+
+container:
+  port: 3000
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 64Mi
+  limits:
+    cpu: 100m
+    memory: 128Mi
+
+gateway:
+  hostname: romaine.life
+  parentGateway:
+    group: gateway.networking.k8s.io
+    kind: Gateway
+    name: main
+    namespace: envoy-gateway-system
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer

@@ -2,7 +2,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: landing-page
-  namespace: landing-page
+  namespace: {{ .Release.Namespace }}
   labels:
     app: landing-page
 spec:
@@ -11,6 +11,6 @@ spec:
     app: landing-page
   ports:
     - name: http
-      port: 80
-      targetPort: http
+      port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.targetPort | quote }}
       protocol: TCP
