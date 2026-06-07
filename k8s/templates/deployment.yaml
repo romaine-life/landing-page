@@ -2,11 +2,11 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: landing-page
-  namespace: landing-page
+  namespace: {{ .Release.Namespace }}
   labels:
     app: landing-page
 spec:
-  replicas: 1
+  replicas: {{ .Values.replicas }}
   selector:
     matchLabels:
       app: landing-page
@@ -20,21 +20,16 @@ spec:
       labels:
         app: landing-page
     spec:
-      serviceAccountName: infra-shared
+      serviceAccountName: {{ .Values.serviceAccount.name | quote }}
       containers:
         - name: landing-page
-          image: romainecr.azurecr.io/landing-page:placeholder
-          imagePullPolicy: IfNotPresent
+          image: {{ printf "%s:%s" .Values.image.repository .Values.image.tag | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy | quote }}
           ports:
             - name: http
-              containerPort: 3000
+              containerPort: {{ .Values.container.port }}
           resources:
-            requests:
-              cpu: 10m
-              memory: 64Mi
-            limits:
-              cpu: 100m
-              memory: 128Mi
+{{ toYaml .Values.resources | indent 12 }}
           startupProbe:
             httpGet:
               path: /health

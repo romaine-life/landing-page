@@ -1,0 +1,22 @@
+apiVersion: gateway.networking.x-k8s.io/v1alpha1
+kind: XListenerSet
+metadata:
+  name: landing-page
+  namespace: {{ .Release.Namespace }}
+spec:
+  parentRef:
+    group: {{ .Values.gateway.parentGateway.group | quote }}
+    kind: {{ .Values.gateway.parentGateway.kind | quote }}
+    name: {{ .Values.gateway.parentGateway.name | quote }}
+    namespace: {{ .Values.gateway.parentGateway.namespace | quote }}
+  listeners:
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: {{ .Values.gateway.hostname | quote }}
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - group: ""
+            kind: Secret
+            name: landing-page-tls

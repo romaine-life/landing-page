@@ -27,7 +27,7 @@ concurrency:
 
 jobs:
   build-and-deploy:
-    name: Build image, push, bump kustomization tag
+    name: Build image, push, bump chart values
     runs-on: ubuntu-latest
     env:
       REGISTRY: romainecr.azurecr.io
@@ -58,7 +58,21 @@ jobs:
           git checkout --detach "$full_sha"
           echo "Resolved ${target_ref} -> ${full_sha}"
 
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Test backend
+        working-directory: backend
+        run: |
+          npm ci
+          npm test
+
       - name: Azure Login (OIDC)
+        if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && (inputs.git_ref == '' || inputs.git_ref == 'main'))
         uses: azure/login@v3
         with:
           client-id: ${{ vars.ARM_CLIENT_ID }}
@@ -72,7 +86,45 @@ jobs:
           echo "TAG=${TAG}" >> "$GITHUB_ENV"
           echo "Built ref $(git rev-parse HEAD) as ${REGISTRY}/${IMAGE}:${TAG}" >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Resolve deployment mode
+        id: deploy-mode
+        env:
+          INPUT_REF: ${{ inputs.git_ref }}
+        run: |
+          set -euo pipefail
+          deploy=false
+          if [ "${GITHUB_EVENT_NAME}" = "push" ] && [ "${GITHUB_REF}" = "refs/heads/main" ]; then
+            deploy=true
+          elif [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ] && [ "${GITHUB_REF}" = "refs/heads/main" ] && { [ -z "${INPUT_REF}" ] || [ "${INPUT_REF}" = "main" ]; }; then
+            deploy=true
+          fi
+          echo "deploy=${deploy}" >> "$GITHUB_OUTPUT"
+          echo "deploy=${deploy}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+
+      - name: Validate Helm chart
+        run: |
+          helm lint k8s
+          helm template landing-page k8s --namespace landing-page >/tmp/landing-page.yaml
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build image without pushing
+        if: steps.deploy-mode.outputs.deploy != 'true'
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: Dockerfile
+          push: false
+          load: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
       - name: Compute next version
+        if: steps.deploy-mode.outputs.deploy == 'true'
         id: next-version
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -89,12 +141,11 @@ jobs:
           echo "Next landing-page version: $next"
 
       - name: ACR login
+        if: steps.deploy-mode.outputs.deploy == 'true'
         run: az acr login --name romainecr
 
-      - name: Set up Buildx
-        uses: docker/setup-buildx-action@v4
-
       - name: Check existing image tag
+        if: steps.deploy-mode.outputs.deploy == 'true'
         id: image
         shell: bash
         run: |
@@ -110,7 +161,7 @@ jobs:
           fi
 
       - name: Build and push image
-        if: steps.image.outputs.target_exists != 'true'
+        if: steps.deploy-mode.outputs.deploy == 'true' && steps.image.outputs.target_exists != 'true'
         uses: docker/build-push-action@v7
         with:
           context: .
@@ -121,32 +172,36 @@ jobs:
           cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE }}-build-cache:app
           cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE }}-build-cache:app,mode=max
 
-      - name: Install kustomize
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      - name: Bump image tag in chart values
+        if: steps.deploy-mode.outputs.deploy == 'true'
         run: |
-          KUSTOMIZE_VERSION=v5.8.1
-          curl -sSL "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/${KUSTOMIZE_VERSION}/kustomize_${KUSTOMIZE_VERSION}_linux_amd64.tar.gz" | sudo tar -xz -C /usr/local/bin/
-
-      - name: Bump image tag in k8s/kustomization.yaml
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        working-directory: k8s
-        run: kustomize edit set image romainecr.azurecr.io/landing-page=romainecr.azurecr.io/landing-page:${{ env.TAG }}
+          node <<'JS'
+          const fs = require('fs');
+          const path = 'k8s/values.yaml';
+          const tag = process.env.TAG;
+          const before = fs.readFileSync(path, 'utf8');
+          const after = before.replace(/^  tag: .+$/m, `  tag: ${tag}`);
+          if (after === before) {
+            throw new Error('values.yaml image tag was not updated');
+          }
+          fs.writeFileSync(path, after);
+          JS
 
       - name: Commit and push tag bump
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: steps.deploy-mode.outputs.deploy == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add k8s/kustomization.yaml
+          git add k8s/values.yaml
           if git diff --cached --quiet; then
-            echo "No kustomization changes to commit"
+            echo "No chart values changes to commit"
             exit 0
           fi
           git commit -m "chore: bump landing-page image to ${{ env.TAG }} [skip ci]"
           git push origin HEAD:main
 
       - name: Create release tag
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: steps.deploy-mode.outputs.deploy == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ steps.next-version.outputs.version }}

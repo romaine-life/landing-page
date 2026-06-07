@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "main": "server.js",
+  "scripts": {
+    "test": "node --check server.js && node --check smoke-test.js && node smoke-test.js"
+  },
   "dependencies": {
     "express": "^4.22.2"
   }

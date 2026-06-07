@@ -1,0 +1,6 @@
+apiVersion: v2
+name: landing-page
+description: Apex romaine.life landing page and gateway routing.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
