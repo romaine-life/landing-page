@@ -102,13 +102,15 @@ jobs:
           body=$(jq -n --arg head "$head" '{Do:"squash",delete_branch_after_merge:true,head_commit_id:$head}')
           printf 'Authorization: token %s\n' "$TOKEN" | curl --fail-with-body -sS --header @- -H 'Content-Type: application/json' -d "$body" "$api/pulls/$pr/merge"
       - name: Release validated source
-        if: steps.scope.outputs.changed == 'true' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           TOKEN: ${{ secrets.PIPELINE_DISPATCH_TOKEN }}
         run: |
           set -euo pipefail
           git fetch --tags
+          image_tag="${TAG:-$(sed -n 's/^  tag: *//p' k8s/values.yaml | tr -d '\"')}"
+          test -n "$image_tag"
           latest=$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -1)
           if [ -z "$latest" ]; then next=v1.0.0; else next="${latest%.*}.$((${latest##*.} + 1))"; fi
-          body=$(jq -n --arg tag "$next" --arg sha "$GITHUB_SHA" --arg image "$REGISTRY/$IMAGE:$TAG" '{tag_name:$tag,target_commitish:$sha,name:$tag,body:("Image: "+$image)}')
+          body=$(jq -n --arg tag "$next" --arg sha "$GITHUB_SHA" --arg image "$REGISTRY/$IMAGE:$image_tag" '{tag_name:$tag,target_commitish:$sha,name:$tag,body:("Image: "+$image)}')
           printf 'Authorization: token %s\n' "$TOKEN" | curl --fail-with-body -sS --header @- -H 'Content-Type: application/json' -d "$body" "$GITHUB_SERVER_URL/api/v1/repos/$GITHUB_REPOSITORY/releases"
