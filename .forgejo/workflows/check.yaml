@@ -1,0 +1,44 @@
+name: Application checks
+on:
+  pull_request:
+  workflow_dispatch:
+jobs:
+  test:
+    name: Test and build application
+    runs-on: ubuntu-latest
+    steps:
+      - uses: https://github.com/actions/checkout@v4
+      - uses: https://github.com/actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test backend
+        working-directory: backend
+        run: |
+          npm ci
+          npm test
+      - uses: https://github.com/azure/setup-helm@v4
+      - name: Validate chart
+        run: |
+          helm lint k8s
+          helm template landing-page k8s --namespace landing-page >/tmp/landing-page.yaml
+      - uses: https://github.com/docker/setup-buildx-action@v4
+        with:
+          driver-opts: network=host
+      - uses: https://github.com/docker/build-push-action@v7
+        with:
+          context: .
+          push: false
+          load: true
+          tags: landing-page:check
+          network: host
+      - name: Smoke-test container
+        run: |
+          set -euo pipefail
+          name="landing-smoke-$GITHUB_RUN_ID"
+          trap 'docker rm -f "$name" >/dev/null 2>&1 || true' EXIT
+          docker run -d --network none --name "$name" landing-page:check
+          for n in $(seq 1 40); do
+            if docker exec "$name" node -e 'fetch("http://127.0.0.1:3000/health").then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))'; then break; fi
+            sleep 1
+          done
+          docker exec "$name" node -e 'const assert=require("node:assert/strict"); (async()=>{for(const p of ["/", "/privacy.html", "/style.css", "/unknown/path"]){const r=await fetch("http://127.0.0.1:3000"+p); assert.equal(r.status,200,p); assert.ok((await r.text()).length>0,p)} assert.equal(await (await fetch("http://127.0.0.1:3000/health")).text(),"ok")})().catch(e=>{console.error(e);process.exit(1)})'

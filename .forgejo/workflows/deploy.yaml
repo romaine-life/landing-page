@@ -1,0 +1,114 @@
+name: Build and deploy
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+  id-token: write
+concurrency:
+  group: landing-page-deploy
+  cancel-in-progress: false
+jobs:
+  deploy:
+    name: Publish image and propose pin
+    runs-on: ubuntu-latest
+    enable-openid-connect: true
+    env:
+      REGISTRY: romainecr.azurecr.io
+      IMAGE: landing-page
+    steps:
+      - uses: https://github.com/actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.PIPELINE_DISPATCH_TOKEN }}
+      - name: Determine whether image inputs changed
+        id: scope
+        env:
+          BASE_SHA: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ] || [ -z "$BASE_SHA" ] || ! git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null || git diff --name-only "$BASE_SHA" HEAD | grep -qE '^(backend/|frontend/|Dockerfile$|\.dockerignore$|\.forgejo/workflows/deploy\.yaml$)'; then
+            echo changed=true >> "$GITHUB_OUTPUT"
+          fi
+      - name: Install Azure CLI
+        if: steps.scope.outputs.changed == 'true'
+        run: |
+          if ! command -v az; then curl -fsSL https://aka.ms/InstallAzureCLIDeb | sudo bash; fi
+      - name: Azure login
+        if: steps.scope.outputs.changed == 'true'
+        uses: https://github.com/azure/login@v3
+        with:
+          client-id: ${{ vars.ARM_CLIENT_ID }}
+          tenant-id: ${{ vars.ARM_TENANT_ID }}
+          subscription-id: ${{ vars.ARM_SUBSCRIPTION_ID }}
+      - name: Set image tag and login
+        if: steps.scope.outputs.changed == 'true'
+        run: |
+          echo "TAG=$(git rev-parse --short=7 HEAD)" >> "$GITHUB_ENV"
+          az acr login --name romainecr
+      - uses: https://github.com/docker/setup-buildx-action@v4
+        if: steps.scope.outputs.changed == 'true'
+        with:
+          driver-opts: network=host
+      - name: Build and push image
+        if: steps.scope.outputs.changed == 'true'
+        uses: https://github.com/docker/build-push-action@v7
+        with:
+          context: .
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE }}:${{ env.TAG }}
+          network: host
+      - name: Smoke-test published image
+        if: steps.scope.outputs.changed == 'true'
+        run: |
+          set -euo pipefail
+          name="landing-published-$GITHUB_RUN_ID"
+          trap 'docker rm -f "$name" >/dev/null 2>&1 || true' EXIT
+          docker run -d --network none --name "$name" "$REGISTRY/$IMAGE:$TAG"
+          for n in $(seq 1 40); do
+            if docker exec "$name" node -e 'fetch("http://127.0.0.1:3000/health").then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))'; then break; fi
+            sleep 1
+          done
+          docker exec "$name" node -e 'const assert=require("node:assert/strict"); (async()=>{assert.equal(await (await fetch("http://127.0.0.1:3000/health")).text(),"ok");for(const p of ["/","/privacy.html","/style.css"]){const r=await fetch("http://127.0.0.1:3000"+p);assert.equal(r.status,200,p);assert.ok((await r.text()).length>0,p)}})().catch(e=>{console.error(e);process.exit(1)})'
+      - name: Propose and merge checked pin
+        if: steps.scope.outputs.changed == 'true' && github.ref == 'refs/heads/main'
+        env:
+          TOKEN: ${{ secrets.PIPELINE_DISPATCH_TOKEN }}
+        run: |
+          set -euo pipefail
+          api="$GITHUB_SERVER_URL/api/v1/repos/$GITHUB_REPOSITORY"
+          branch="FORGEJO-3-image-$GITHUB_RUN_ID"
+          git switch -c "$branch"
+          sed -i "s|^  tag: .*|  tag: ${TAG}|" k8s/values.yaml
+          git config user.name forgejo-actions
+          git config user.email forgejo-actions@noreply.romaine.life
+          git add k8s/values.yaml
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "chore: pin landing-page image $TAG"
+          git push origin "$branch"
+          body=$(jq -n --arg head "$branch" '{head:$head,base:"main",title:"Deploy validated landing-page image",body:"https://openproject.romaine.life/wp/FORGEJO-3"}')
+          pr=$(printf 'Authorization: token %s\n' "$TOKEN" | curl --fail-with-body -sS --header @- -H 'Content-Type: application/json' -d "$body" "$api/pulls" | jq -er .number)
+          head=$(git rev-parse HEAD)
+          passed=false
+          for n in $(seq 1 60); do
+            statuses=$(printf 'Authorization: token %s\n' "$TOKEN" | curl --fail-with-body -sS --header @- "$api/commits/$head/status")
+            state=$(echo "$statuses" | jq -r '[.statuses[]? | select(.context == "Application checks / Test and build application (pull_request)")] | sort_by(.updated_at) | last | .status // "pending"')
+            if [ "$state" = failure ] || [ "$state" = error ]; then echo "Pin PR $pr failed checks"; exit 1; fi
+            if [ "$state" = success ]; then passed=true; break; fi
+            sleep 30
+          done
+          if [ "$passed" != true ]; then echo "Pin PR $pr did not pass checks"; exit 1; fi
+          body=$(jq -n --arg head "$head" '{Do:"squash",delete_branch_after_merge:true,head_commit_id:$head}')
+          printf 'Authorization: token %s\n' "$TOKEN" | curl --fail-with-body -sS --header @- -H 'Content-Type: application/json' -d "$body" "$api/pulls/$pr/merge"
+      - name: Release validated source
+        if: steps.scope.outputs.changed == 'true' && github.ref == 'refs/heads/main'
+        env:
+          TOKEN: ${{ secrets.PIPELINE_DISPATCH_TOKEN }}
+        run: |
+          set -euo pipefail
+          git fetch --tags
+          latest=$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -1)
+          if [ -z "$latest" ]; then next=v1.0.0; else next="${latest%.*}.$((${latest##*.} + 1))"; fi
+          body=$(jq -n --arg tag "$next" --arg sha "$GITHUB_SHA" --arg image "$REGISTRY/$IMAGE:$TAG" '{tag_name:$tag,target_commitish:$sha,name:$tag,body:("Image: "+$image)}')
+          printf 'Authorization: token %s\n' "$TOKEN" | curl --fail-with-body -sS --header @- -H 'Content-Type: application/json' -d "$body" "$GITHUB_SERVER_URL/api/v1/repos/$GITHUB_REPOSITORY/releases"
