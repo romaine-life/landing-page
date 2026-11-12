@@ -9,6 +9,11 @@ app.get('/health', (_req, res) => res.status(200).send('ok'));
 
 app.use(express.static(FRONTEND_DIR));
 
+// The diagrams site is a single-page app: its own routes resolve to its index.
+app.get('/diagrams/*', (_req, res) => {
+  res.sendFile(path.join(FRONTEND_DIR, 'diagrams', 'index.html'));
+});
+
 app.get('*', (_req, res) => {
   res.sendFile(path.join(FRONTEND_DIR, 'index.html'));
 });

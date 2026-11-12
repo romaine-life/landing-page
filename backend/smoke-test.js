@@ -1,4 +1,6 @@
 const http = require('http');
+const fs = require('fs');
+const path = require('path');
 const { spawn } = require('child_process');
 
 const port = 31338;
@@ -57,6 +59,15 @@ async function main() {
   const fallback = await get('/unknown/path');
   if (fallback.statusCode !== 200 || !fallback.body.includes('romaine.life')) {
     throw new Error(`Unexpected fallback response: ${fallback.statusCode}`);
+  }
+  // The diagrams site exists only once its build has been copied in (the image does this).
+  if (fs.existsSync(path.join(__dirname, '..', 'frontend', 'diagrams', 'index.html'))) {
+    for (const p of ['/diagrams/', '/diagrams/fzt']) {
+      const r = await get(p);
+      if (r.statusCode !== 200 || !r.body.includes('/diagrams/assets/')) {
+        throw new Error(`Unexpected diagrams response for ${p}: ${r.statusCode}`);
+      }
+    }
   }
 }
 

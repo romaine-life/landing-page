@@ -2,6 +2,11 @@ node_modules/
 npm-debug.log
 .DS_Store
 
+# the diagrams site's build inputs and output
+diagrams/node_modules/
+diagrams/dist/
+diagrams/public/version.json
+
 # fetched from the fzt-browser release by CI
 frontend/fzh/fzt.wasm
 frontend/fzh/fzt-terminal.js

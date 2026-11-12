@@ -46,6 +46,8 @@ jobs:
           load: true
           tags: landing-page:check
           network: host
+          build-args: |
+            SOURCE_SHA=${{ github.sha }}
       - name: Smoke-test container
         run: |
           set -euo pipefail
@@ -56,4 +58,4 @@ jobs:
             if docker exec "$name" node -e 'fetch("http://127.0.0.1:3000/health").then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))'; then break; fi
             sleep 1
           done
-          docker exec "$name" node -e 'const assert=require("node:assert/strict"); (async()=>{for(const p of ["/", "/privacy.html", "/style.css", "/fzh/", "/fzh/fzt.wasm", "/unknown/path"]){const r=await fetch("http://127.0.0.1:3000"+p); assert.equal(r.status,200,p); assert.ok((await r.text()).length>0,p)} assert.equal(await (await fetch("http://127.0.0.1:3000/health")).text(),"ok")})().catch(e=>{console.error(e);process.exit(1)})'
+          docker exec "$name" node -e 'const assert=require("node:assert/strict"); (async()=>{for(const p of ["/", "/privacy.html", "/style.css", "/fzh/", "/fzh/fzt.wasm", "/diagrams/", "/diagrams/fzt", "/unknown/path"]){const r=await fetch("http://127.0.0.1:3000"+p); assert.equal(r.status,200,p); assert.ok((await r.text()).length>0,p)} assert.equal(await (await fetch("http://127.0.0.1:3000/health")).text(),"ok")})().catch(e=>{console.error(e);process.exit(1)})'
