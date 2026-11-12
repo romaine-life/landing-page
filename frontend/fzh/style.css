@@ -1,0 +1,250 @@
+@font-face {
+  font-family: "Perfect DOS VGA 437";
+  src: url("PerfectDOSVGA437.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: "Symbols Nerd Font Mono";
+  src: url("SymbolsNerdFontMono-Regular.ttf") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg: #050505;
+  --bg-panel: #0a0a0a;
+  --bg-titlebar: #111111;
+  --fg: #c0caf5;
+  --fg-dim: #565f89;
+  --fg-muted: #333;
+  --border: #2a2a2a;
+  --cursor: #c0caf5;
+  --accent: #33ff33;
+  --glow: #33ff33;
+  --terminal-font: "Perfect DOS VGA 437", "Cascadia Code", "JetBrains Mono", "Fira Code", "SF Mono", "Consolas", "Symbols Nerd Font Mono", monospace;
+
+  /* Override shared fzt-terminal.css variables */
+  --fzt-bg: var(--bg-panel);
+  --fzt-fg: var(--fg);
+  --fzt-font: var(--terminal-font);
+}
+
+/* When the ambience rain layer is present, let drops show through the
+   terminal area by making fzt's background transparent. ambience-client.js
+   adds body.ambience-on on successful init — so if a consumer removes the
+   canvas or ambience fails to load, the terminal keeps its solid bg. */
+body.ambience-on {
+  --fzt-bg: transparent;
+}
+
+body {
+  font-family: var(--terminal-font);
+  font-size: 16px;
+  line-height: 1.4;
+  background: var(--bg);
+  color: var(--fg);
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+  font-smooth: never;
+}
+
+/* ── Ambience canvas (rain overlay, behind all content) ── */
+#ambience-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* ── Page layout ── */
+.page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 960px;
+  height: 100vh;
+  padding: 24px 24px 16px;
+  gap: 0;
+  /* Sit above the ambience canvas */
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Command history (rendered in JS) ── */
+.cmd-history {
+  white-space: pre;
+}
+
+.cmd-output {
+  white-space: pre;
+  color: var(--fg-dim);
+}
+
+.cmd-link {
+  color: #4a9a4a;
+  text-decoration: none;
+  transition: color 0.15s, text-shadow 0.15s;
+}
+
+.cmd-link:hover {
+  color: var(--accent);
+  text-shadow: 0 0 6px var(--glow);
+}
+
+.cmd-link-btn {
+  background: transparent;
+  border: none;
+  color: #4a9a4a;
+  font-family: var(--terminal-font);
+  font-size: inherit;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.15s, text-shadow 0.15s;
+}
+
+.cmd-link-btn:hover {
+  color: var(--accent);
+  text-shadow: 0 0 6px var(--glow);
+}
+
+/* ── Terminal window (layout additions to shared .fzt-terminal-window) ── */
+.terminal-window {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  border: none;
+}
+
+.cmd-history {
+  white-space: pre;
+  padding: 2px 0;
+}
+
+#terminal {
+  flex: 1;
+  min-height: 0;
+}
+
+/* ── YAML drawer (overlay) ── */
+.yaml-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 420px;
+  height: 100vh;
+  background: var(--bg-panel);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  z-index: 50;
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.4);
+  transition: transform 0.2s ease;
+}
+
+.yaml-drawer.hidden {
+  transform: translateX(100%);
+  pointer-events: none;
+}
+
+.drawer-header {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--bg-titlebar);
+  border-bottom: 1px solid var(--border);
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.drawer-title {
+  font-size: 12px;
+  color: var(--accent);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.drawer-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.drawer-actions button {
+  background: var(--bg);
+  color: var(--fg-dim);
+  border: 1px solid var(--border);
+  padding: 2px 8px;
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  border-radius: 2px;
+}
+
+.drawer-actions button:hover {
+  color: var(--fg);
+  border-color: var(--fg-dim);
+}
+
+.btn-close {
+  font-size: 16px;
+  line-height: 1;
+  padding: 0 4px;
+  border: none !important;
+  background: transparent !important;
+}
+
+#yaml-editor {
+  flex: 1;
+  background: var(--bg-panel);
+  color: var(--fg);
+  border: none;
+  padding: 12px;
+  font-family: var(--terminal-font);
+  font-size: 13px;
+  line-height: 1.6;
+  resize: none;
+  outline: none;
+  tab-size: 2;
+}
+
+/* ── Loading overlay ── */
+.loading {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--bg);
+  color: var(--fg-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  z-index: 100;
+}
+
+.loading.hidden {
+  display: none;
+}

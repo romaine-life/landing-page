@@ -22,6 +22,20 @@ jobs:
         run: |
           helm lint k8s
           helm template landing-page k8s --namespace landing-page >/tmp/landing-page.yaml
+      - name: Download fzt-browser release assets for /fzh
+        env:
+          TOKEN: ${{ secrets.PIPELINE_DISPATCH_TOKEN }}
+        run: |
+          set -euo pipefail
+          authcurl() { printf 'header = "Authorization: token %s"\n' "$TOKEN" | curl -K - "$@"; }
+          api="${{ github.server_url }}/api/v1/repos/romaine-life/fzt-browser"
+          authcurl -fsS "$api/releases/latest" > /tmp/browser-release.json
+          version=$(jq -er .tag_name /tmp/browser-release.json)
+          for asset in fzt.wasm fzt-terminal.js fzt-terminal.css fzt-web.js; do
+            url=$(jq -er --arg name "$asset" '.assets[] | select(.name == $name) | .browser_download_url' /tmp/browser-release.json)
+            authcurl -fLSs "$url" -o "frontend/fzh/$asset"
+          done
+          jq -n --arg v "$version" --arg sha "$(git rev-parse --short=7 HEAD)" --arg date "$(date -u +%Y-%m-%dT%H:%M:%SZ)"             '{fztBrowser:$v,sha:$sha,deployedAt:$date}' > frontend/fzh/version.json
       - uses: docker/setup-buildx-action@v4
         with:
           driver-opts: network=host
@@ -42,4 +56,4 @@ jobs:
             if docker exec "$name" node -e 'fetch("http://127.0.0.1:3000/health").then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))'; then break; fi
             sleep 1
           done
-          docker exec "$name" node -e 'const assert=require("node:assert/strict"); (async()=>{for(const p of ["/", "/privacy.html", "/style.css", "/unknown/path"]){const r=await fetch("http://127.0.0.1:3000"+p); assert.equal(r.status,200,p); assert.ok((await r.text()).length>0,p)} assert.equal(await (await fetch("http://127.0.0.1:3000/health")).text(),"ok")})().catch(e=>{console.error(e);process.exit(1)})'
+          docker exec "$name" node -e 'const assert=require("node:assert/strict"); (async()=>{for(const p of ["/", "/privacy.html", "/style.css", "/fzh/", "/fzh/fzt.wasm", "/unknown/path"]){const r=await fetch("http://127.0.0.1:3000"+p); assert.equal(r.status,200,p); assert.ok((await r.text()).length>0,p)} assert.equal(await (await fetch("http://127.0.0.1:3000/health")).text(),"ok")})().catch(e=>{console.error(e);process.exit(1)})'

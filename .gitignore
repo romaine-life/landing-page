@@ -1,3 +1,10 @@
 node_modules/
 npm-debug.log
 .DS_Store
+
+# fetched from the fzt-browser release by CI
+frontend/fzh/fzt.wasm
+frontend/fzh/fzt-terminal.js
+frontend/fzh/fzt-terminal.css
+frontend/fzh/fzt-web.js
+frontend/fzh/version.json
