@@ -70,7 +70,7 @@ jobs:
             if docker exec "$name" node -e 'fetch("http://127.0.0.1:3000/health").then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))'; then break; fi
             sleep 1
           done
-          docker exec "$name" node -e 'const assert=require("node:assert/strict"); (async()=>{assert.equal(await (await fetch("http://127.0.0.1:3000/health")).text(),"ok");for(const p of ["/","/privacy.html","/style.css"]){const r=await fetch("http://127.0.0.1:3000"+p);assert.equal(r.status,200,p);assert.ok((await r.text()).length>0,p)}})().catch(e=>{console.error(e);process.exit(1)})'
+          docker exec "$name" node -e 'const assert=require("node:assert/strict"); (async()=>{assert.equal(await (await fetch("http://127.0.0.1:3000/health")).text(),"ok");for(const p of ["/","/privacy.html","/style.css","/treadmill-board.html"]){const r=await fetch("http://127.0.0.1:3000"+p);assert.equal(r.status,200,p);assert.ok((await r.text()).length>0,p)}})().catch(e=>{console.error(e);process.exit(1)})'
       - name: Propose and merge checked pin
         if: steps.scope.outputs.changed == 'true' && github.ref == 'refs/heads/main'
         env:
