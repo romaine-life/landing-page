@@ -10,7 +10,16 @@ COPY diagrams/ ./
 ARG SOURCE_SHA=unknown
 RUN mkdir -p public && printf '{"sha":"%s","deployedAt":"%s"}\n' "$SOURCE_SHA" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > public/version.json && npm run build
 
-# Stage 2: runtime.
+# Stage 2: the String Box board viewer (three.js + Vite), served under /string-box.
+# CI downloads its model, string-box.glb, into string-box/public first.
+FROM node:20-alpine AS string-box-builder
+WORKDIR /build
+COPY string-box/package*.json ./
+RUN npm ci
+COPY string-box/ ./
+RUN test -s public/string-box.glb && npm run build
+
+# Stage 3: runtime.
 FROM node:20-alpine
 
 WORKDIR /app
@@ -21,6 +30,7 @@ RUN cd backend && npm install --omit=dev
 COPY backend/ backend/
 COPY frontend/ frontend/
 COPY --from=diagrams-builder /build/dist frontend/diagrams
+COPY --from=string-box-builder /build/dist frontend/string-box
 
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001 && \

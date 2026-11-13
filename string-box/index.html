@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>String Box: the board in 3D</title>
+  <meta name="description" content="A six-channel receiver for a hexaphonic guitar pickup, assembled part by part in 3D.">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="./src/style.css">
+</head>
+<body>
+  <canvas id="view" aria-label="3D model of the String Box circuit board"></canvas>
+
+  <header id="intro">
+    <h1>String Box</h1>
+    <p>A six-channel receiver for a hexaphonic guitar pickup. Every string gets its own preamp and
+      converter, and a Teensy 4.1 streams all six to a PC over USB, so visuals can follow the real
+      motion of each string.</p>
+  </header>
+
+  <div id="status" role="status"></div>
+
+  <section id="caption" hidden>
+    <div id="step"></div>
+    <div id="title"></div>
+    <div id="detail"></div>
+    <ol id="dots" aria-hidden="true"></ol>
+  </section>
+
+  <nav id="buttons" hidden>
+    <button id="build" type="button">Build it again</button>
+    <button id="flip" type="button">Show the back</button>
+    <button id="spin" type="button" aria-pressed="true">Stop spinning</button>
+  </nav>
+
+  <footer>Drag to turn, scroll or pinch to zoom. The back's silkscreen is six string recordings from
+    <a href="https://guitarset.weebly.com/">GuitarSet</a> (CC BY 4.0).</footer>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>

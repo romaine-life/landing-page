@@ -36,6 +36,18 @@ jobs:
             authcurl -fLSs "$url" -o "frontend/fzh/$asset"
           done
           jq -n --arg v "$version" --arg sha "$(git rev-parse --short=7 HEAD)" --arg date "$(date -u +%Y-%m-%dT%H:%M:%SZ)"             '{fztBrowser:$v,sha:$sha,deployedAt:$date}' > frontend/fzh/version.json
+      - name: Download the String Box board model for /string-box
+        env:
+          TOKEN: ${{ secrets.PIPELINE_DISPATCH_TOKEN }}
+        run: |
+          set -euo pipefail
+          authcurl() { printf 'header = "Authorization: token %s"\n' "$TOKEN" | curl -K - "$@"; }
+          api="${{ github.server_url }}/api/v1/repos/romaine-life/string-box"
+          sha=$(authcurl -fsS "$api/commits?sha=main&path=renders/string-box.glb&limit=1" | jq -er '.[0].sha')
+          mkdir -p string-box/public
+          authcurl -fLSs "$api/raw/renders/string-box.glb?ref=$sha" -o string-box/public/string-box.glb
+          test -s string-box/public/string-box.glb
+          echo "string-box.glb from romaine-life/string-box@$sha"
       - uses: docker/setup-buildx-action@v4
         with:
           driver-opts: network=host
@@ -58,4 +70,4 @@ jobs:
             if docker exec "$name" node -e 'fetch("http://127.0.0.1:3000/health").then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))'; then break; fi
             sleep 1
           done
-          docker exec "$name" node -e 'const assert=require("node:assert/strict"); (async()=>{for(const p of ["/", "/privacy.html", "/style.css", "/fzh/", "/fzh/fzt.wasm", "/diagrams/", "/diagrams/fzt", "/unknown/path"]){const r=await fetch("http://127.0.0.1:3000"+p); assert.equal(r.status,200,p); assert.ok((await r.text()).length>0,p)} assert.equal(await (await fetch("http://127.0.0.1:3000/health")).text(),"ok")})().catch(e=>{console.error(e);process.exit(1)})'
+          docker exec "$name" node -e 'const assert=require("node:assert/strict"); (async()=>{for(const p of ["/", "/privacy.html", "/style.css", "/fzh/", "/fzh/fzt.wasm", "/diagrams/", "/diagrams/fzt", "/string-box/", "/string-box/string-box.glb", "/unknown/path"]){const r=await fetch("http://127.0.0.1:3000"+p); assert.equal(r.status,200,p); assert.ok((await r.text()).length>0,p)} assert.equal(await (await fetch("http://127.0.0.1:3000/health")).text(),"ok")})().catch(e=>{console.error(e);process.exit(1)})'

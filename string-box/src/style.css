@@ -1,0 +1,152 @@
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: radial-gradient(ellipse at 50% 35%, #2a3140 0%, #12151b 70%);
+  color: #e8eaee;
+  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+#view {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+}
+
+#intro {
+  position: fixed;
+  left: 24px;
+  top: 20px;
+  max-width: 34rem;
+  pointer-events: none;
+}
+
+#intro h1 {
+  margin: 0 0 6px;
+  font-size: 26px;
+  font-weight: 650;
+  letter-spacing: .01em;
+}
+
+#intro p {
+  margin: 0;
+  opacity: .72;
+}
+
+#status {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  font-size: 16px;
+  opacity: .85;
+}
+
+#status:empty {
+  display: none;
+}
+
+#status.error {
+  color: #ffb4a8;
+}
+
+#caption {
+  position: fixed;
+  left: 24px;
+  bottom: 48px;
+  pointer-events: none;
+}
+
+#step {
+  font-size: 12px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  opacity: .6;
+}
+
+#title {
+  font-size: 22px;
+  font-weight: 600;
+}
+
+#detail {
+  opacity: .72;
+  min-height: 1.45em;
+}
+
+#dots {
+  display: flex;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+#dots li {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #e8eaee;
+  opacity: .22;
+  transition: opacity .3s;
+}
+
+#dots li.done {
+  opacity: .85;
+}
+
+#buttons {
+  position: fixed;
+  right: 20px;
+  top: 20px;
+  display: flex;
+  gap: 8px;
+}
+
+#buttons[hidden], #caption[hidden] {
+  display: none;
+}
+
+button {
+  background: rgba(255, 255, 255, .08);
+  color: inherit;
+  border: 1px solid rgba(255, 255, 255, .18);
+  border-radius: 8px;
+  padding: 7px 13px;
+  font: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  backdrop-filter: blur(6px);
+}
+
+button:hover {
+  background: rgba(255, 255, 255, .16);
+}
+
+footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 14px;
+  box-sizing: border-box;
+  padding: 0 12px;
+  text-align: center;
+  font-size: 13px;
+  opacity: .5;
+}
+
+footer a {
+  color: inherit;
+}
+
+@media (max-width: 720px) {
+  #intro p { display: none; }
+  #buttons { top: auto; bottom: 190px; left: 0; right: 0; justify-content: center; gap: 6px; }
+  button { padding: 6px 10px; font-size: 14px; }
+  #caption { bottom: 72px; }
+  footer { font-size: 11px; }
+}

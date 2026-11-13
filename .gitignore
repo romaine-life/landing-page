@@ -7,6 +7,11 @@ diagrams/node_modules/
 diagrams/dist/
 diagrams/public/version.json
 
+# the String Box viewer's build inputs and output; CI fetches the model from romaine-life/string-box
+string-box/node_modules/
+string-box/dist/
+string-box/public/string-box.glb
+
 # fetched from the fzt-browser release by CI
 frontend/fzh/fzt.wasm
 frontend/fzh/fzt-terminal.js
