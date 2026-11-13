@@ -45,7 +45,7 @@ try {
   throw e
 }
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2))
-renderer.setSize(innerWidth, innerHeight, false)
+renderer.setSize(canvas.clientWidth, canvas.clientHeight, false)
 renderer.toneMapping = THREE.ACESFilmicToneMapping
 renderer.shadowMap.enabled = true
 renderer.shadowMap.type = THREE.PCFShadowMap
@@ -55,9 +55,10 @@ const pmrem = new THREE.PMREMGenerator(renderer)
 scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture
 scene.environmentIntensity = 0.7
 
-const camera = new THREE.PerspectiveCamera(32, innerWidth / innerHeight, 0.005, 10)
+const camera = new THREE.PerspectiveCamera(32, canvas.clientWidth / canvas.clientHeight, 0.005, 10)
 const controls = new OrbitControls(camera, canvas)
 controls.enableDamping = true
+controls.enableZoom = false // the wheel scrolls the page down to how it works
 controls.autoRotateSpeed = 0.8
 controls.enabled = false
 
@@ -71,10 +72,25 @@ under.position.set(0.3, -1, -0.4)
 scene.add(sun, sun.target, under)
 
 addEventListener('resize', () => {
-  camera.aspect = innerWidth / innerHeight
+  camera.aspect = canvas.clientWidth / canvas.clientHeight
   camera.updateProjectionMatrix()
-  renderer.setSize(innerWidth, innerHeight, false)
+  renderer.setSize(canvas.clientWidth, canvas.clientHeight, false)
 })
+
+// Run only while the board is on screen; the build pauses while it's scrolled away.
+let onScreen = true
+let running = false
+function run() {
+  const on = onScreen && parts.length > 0
+  if (on === running) return
+  running = on
+  last = performance.now()
+  renderer.setAnimationLoop(on ? frame : null)
+}
+new IntersectionObserver(([e]) => {
+  onScreen = e.isIntersecting
+  run()
+}).observe(canvas)
 
 statusEl.textContent = 'Loading the board…'
 const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder)
@@ -230,7 +246,7 @@ function start(gltf) {
     rebuild()
   }
 
-  renderer.setAnimationLoop(frame)
+  run()
 }
 
 let view

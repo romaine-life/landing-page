@@ -4,38 +4,74 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>String Box: the board in 3D</title>
-  <meta name="description" content="A six-channel receiver for a hexaphonic guitar pickup, assembled part by part in 3D.">
+  <meta name="description" content="A six-channel receiver for a hexaphonic guitar pickup: what it does, and the board assembled part by part in 3D.">
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="./src/style.css">
 </head>
 <body>
-  <canvas id="view" aria-label="3D model of the String Box circuit board"></canvas>
+  <section id="hero">
+    <canvas id="view" aria-label="3D model of the String Box circuit board"></canvas>
 
-  <header id="intro">
-    <h1>String Box</h1>
-    <p>A six-channel receiver for a hexaphonic guitar pickup. Every string gets its own preamp and
-      converter, and a Teensy 4.1 streams all six to a PC over USB, so visuals can follow the real
-      motion of each string.</p>
-  </header>
+    <header id="intro">
+      <h1>String Box</h1>
+      <p>A six-channel receiver for a hexaphonic guitar pickup. Every string gets its own preamp and
+        converter, and a Teensy 4.1 streams all six to a PC over USB, so visuals can follow the real
+        motion of each string.</p>
+    </header>
 
-  <div id="status" role="status"></div>
+    <div id="status" role="status"></div>
 
-  <section id="caption" hidden>
-    <div id="step"></div>
-    <div id="title"></div>
-    <div id="detail"></div>
-    <ol id="dots" aria-hidden="true"></ol>
+    <section id="caption" hidden>
+      <div id="step"></div>
+      <div id="title"></div>
+      <div id="detail"></div>
+      <ol id="dots" aria-hidden="true"></ol>
+    </section>
+
+    <nav id="buttons" hidden>
+      <button id="build" type="button">Build it again</button>
+      <button id="flip" type="button">Show the back</button>
+      <button id="spin" type="button" aria-pressed="true">Stop spinning</button>
+    </nav>
+
+    <a id="more" href="#idea">How it works <span aria-hidden="true">&darr;</span></a>
   </section>
 
-  <nav id="buttons" hidden>
-    <button id="build" type="button">Build it again</button>
-    <button id="flip" type="button">Show the back</button>
-    <button id="spin" type="button" aria-pressed="true">Stop spinning</button>
-  </nav>
+  <main id="idea">
+    <h2>A normal pickup hears a chord. String Box hears six strings.</h2>
+    <p class="lede">An electric guitar's pickup sums all six strings into one signal, so by the time it
+      reaches a computer, which string rang, and how hard, is mixed away. String Box keeps them apart.</p>
 
-  <footer>Drag to turn, scroll or pinch to zoom. The back's silkscreen is six string recordings from
+    <figure>
+      <canvas id="scope" role="img" aria-label="Animation: the same strummed and picked notes, shown once as the single mixed signal a normal pickup gives, and once as six separate signals, one per string."></canvas>
+      <figcaption>The same playing, twice: as one signal from a normal pickup, and as the six signals String
+        Box delivers. Slowed down about 25 times.</figcaption>
+    </figure>
+
+    <ol class="steps">
+      <li>
+        <h3>The pickup</h3>
+        <p>A hexaphonic pickup (here a SubSix) has a separate coil under each string, so it puts out six
+          signals instead of one, on two small cables.</p>
+      </li>
+      <li>
+        <h3>The board</h3>
+        <p>Each signal gets its own preamp, with a trimmer to set that string's gain, and its own
+          converter, which measures it about 44,000 times a second.</p>
+      </li>
+      <li>
+        <h3>The computer</h3>
+        <p>A Teensy 4.1 streams all six to a PC over USB, where visuals can react to each string on its
+          own: which one rang, how hard, and for how long. The guitar's sound still goes through a
+          microphone; String Box carries only the strings' motion.</p>
+      </li>
+    </ol>
+  </main>
+
+  <footer>Drag the board to turn it. The back's silkscreen is six string recordings from
     <a href="https://guitarset.weebly.com/">GuitarSet</a> (CC BY 4.0).</footer>
 
   <script type="module" src="./src/main.js"></script>
+  <script type="module" src="./src/scope.js"></script>
 </body>
 </html>
