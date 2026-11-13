@@ -28,9 +28,18 @@ jobs:
           BASE_SHA: ${{ github.event.before }}
         run: |
           set -euo pipefail
-          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ] || [ -z "$BASE_SHA" ] || ! git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null || git diff --name-only "$BASE_SHA" HEAD | grep -qE '^(backend/|frontend/|Dockerfile$|\.dockerignore$|\.forgejo/workflows/deploy\.yaml$)'; then
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ] || [ -z "$BASE_SHA" ] || ! git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null; then
             echo changed=true >> "$GITHUB_OUTPUT"
+            exit 0
           fi
+          # The image's inputs are what the Dockerfile copies from the repo, plus the files that build it.
+          inputs="$(sed -n 's/^COPY \([^-][^ ]*\) .*/\1/p' Dockerfile | sed 's/\*.*$//') Dockerfile .dockerignore .forgejo/workflows/deploy.yaml"
+          echo "image inputs:" $inputs
+          for f in $(git diff --name-only "$BASE_SHA" HEAD); do
+            for p in $inputs; do
+              case "$f" in "$p"*) echo "changed: $f"; echo changed=true >> "$GITHUB_OUTPUT"; exit 0 ;; esac
+            done
+          done
       - name: Install Azure CLI
         if: steps.scope.outputs.changed == 'true'
         run: |
