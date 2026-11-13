@@ -119,7 +119,8 @@ jobs:
           api="$GITHUB_SERVER_URL/api/v1/repos/$GITHUB_REPOSITORY"
           branch="FORGEJO-3-image-$GITHUB_RUN_ID"
           git switch -c "$branch"
-          sed -i "s|^  tag: .*|  tag: ${TAG}|" k8s/values.yaml
+          # quoted: a short SHA of only digits would otherwise be read as a number
+          sed -i "s|^  tag: .*|  tag: \"${TAG}\"|" k8s/values.yaml
           git config user.name forgejo-actions
           git config user.email forgejo-actions@noreply.romaine.life
           git add k8s/values.yaml
