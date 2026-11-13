@@ -2,8 +2,9 @@
 # Kept on Node (rather than nginx/caddy) to match the house pattern across
 # every other app in the cluster (see my-homepage for the prior art).
 # Stage 1: the diagrams site (React + Vite) built into static files served under /diagrams.
-FROM node:20-alpine AS diagrams-builder
+FROM artifacts.home.romaine.life/dockerhub/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293 AS diagrams-builder
 WORKDIR /build
+ENV NPM_CONFIG_REGISTRY=https://artifacts.home.romaine.life/npm/npm/
 COPY diagrams/package*.json ./
 RUN npm ci
 COPY diagrams/ ./
@@ -12,17 +13,19 @@ RUN mkdir -p public && printf '{"sha":"%s","deployedAt":"%s"}\n' "$SOURCE_SHA" "
 
 # Stage 2: the String Box board viewer (three.js + Vite), served under /string-box.
 # CI downloads its model, string-box.glb, into string-box/public first.
-FROM node:20-alpine AS string-box-builder
+FROM artifacts.home.romaine.life/dockerhub/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293 AS string-box-builder
 WORKDIR /build
+ENV NPM_CONFIG_REGISTRY=https://artifacts.home.romaine.life/npm/npm/
 COPY string-box/package*.json ./
 RUN npm ci
 COPY string-box/ ./
 RUN test -s public/string-box.glb && npm run build
 
 # Stage 3: runtime.
-FROM node:20-alpine
+FROM artifacts.home.romaine.life/dockerhub/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293
 
 WORKDIR /app
+ARG NPM_CONFIG_REGISTRY=https://artifacts.home.romaine.life/npm/npm/
 
 COPY backend/package*.json backend/
 RUN cd backend && npm install --omit=dev
