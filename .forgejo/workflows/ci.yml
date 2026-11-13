@@ -1,17 +1,121 @@
-name: Build and deploy
+name: CI
+
 on:
+  pull_request:
   push:
     branches: [main]
   workflow_dispatch:
+
 permissions:
   contents: write
   id-token: write
+
 concurrency:
-  group: landing-page-deploy
+  group: ci-${{ github.ref }}
   cancel-in-progress: false
+
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.diff.outputs.code }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: romaine-life/pipeline-templates/actions/check-fetches@main
+      - id: diff
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ "$EVENT" != pull_request ]; then
+            echo code=true >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          files=$(git diff --name-only "$BASE...HEAD")
+          if grep -qvE '\.md$|^docs/|^LICENSE$' <<< "$files"; then
+            echo code=true >> "$GITHUB_OUTPUT"
+          fi
+
+  test:
+    name: Test and build application
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test backend
+        working-directory: backend
+        run: |
+          npm ci
+          npm test
+      - uses: azure/setup-helm@v4
+        with:
+          version: v4.3.1
+          downloadBaseURL: https://artifacts.home.romaine.life/general/helm-downloads/
+      - name: Validate chart
+        run: |
+          helm lint k8s
+          helm template landing-page k8s --namespace landing-page >/tmp/landing-page.yaml
+      - name: Download fzt-browser release assets for /fzh
+        env:
+          TOKEN: ${{ secrets.PIPELINE_DISPATCH_TOKEN }}
+        run: |
+          set -euo pipefail
+          authcurl() { printf 'header = "Authorization: token %s"\n' "$TOKEN" | curl -K - "$@"; }
+          api="${{ github.server_url }}/api/v1/repos/romaine-life/fzt-browser"
+          authcurl -fsS "$api/releases/latest" > /tmp/browser-release.json
+          version=$(jq -er .tag_name /tmp/browser-release.json)
+          for asset in fzt.wasm fzt-terminal.js fzt-terminal.css fzt-web.js; do
+            url=$(jq -er --arg name "$asset" '.assets[] | select(.name == $name) | .browser_download_url' /tmp/browser-release.json)
+            authcurl -fLSs "$url" -o "frontend/fzh/$asset"
+          done
+          jq -n --arg v "$version" --arg sha "$(git rev-parse --short=7 HEAD)" --arg date "$(date -u +%Y-%m-%dT%H:%M:%SZ)"             '{fztBrowser:$v,sha:$sha,deployedAt:$date}' > frontend/fzh/version.json
+      - name: Download the String Box board model for /string-box
+        env:
+          TOKEN: ${{ secrets.PIPELINE_DISPATCH_TOKEN }}
+        run: |
+          set -euo pipefail
+          authcurl() { printf 'header = "Authorization: token %s"\n' "$TOKEN" | curl -K - "$@"; }
+          api="${{ github.server_url }}/api/v1/repos/romaine-life/string-box"
+          sha=$(authcurl -fsS "$api/commits?sha=main&path=renders/string-box.glb&limit=1" | jq -er '.[0].sha')
+          mkdir -p string-box/public
+          authcurl -fLSs "$api/raw/renders/string-box.glb?ref=$sha" -o string-box/public/string-box.glb
+          test -s string-box/public/string-box.glb
+          echo "string-box.glb from romaine-life/string-box@$sha"
+      - uses: docker/setup-buildx-action@v4
+        with:
+          driver-opts: |
+            network=host
+            image=artifacts.home.romaine.life/dockerhub/moby/buildkit:buildx-stable-1@sha256:c5f8862f52499773af85bc07695b2379ef08e8002352b0df2c4864c91d78dabe
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: false
+          load: true
+          tags: landing-page:check
+          network: host
+          build-args: |
+            SOURCE_SHA=${{ github.sha }}
+      - name: Smoke-test container
+        run: |
+          set -euo pipefail
+          name="landing-smoke-$GITHUB_RUN_ID"
+          trap 'docker rm -f "$name" >/dev/null 2>&1 || true' EXIT
+          docker run -d --network none --name "$name" landing-page:check
+          for n in $(seq 1 40); do
+            if docker exec "$name" node -e 'fetch("http://127.0.0.1:3000/health").then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))'; then break; fi
+            sleep 1
+          done
+          docker exec "$name" node -e 'const assert=require("node:assert/strict"); (async()=>{for(const p of ["/", "/privacy.html", "/style.css", "/fzh/", "/fzh/fzt.wasm", "/diagrams/", "/diagrams/fzt", "/string-box/", "/string-box/string-box.glb", "/unknown/path"]){const r=await fetch("http://127.0.0.1:3000"+p); assert.equal(r.status,200,p); assert.ok((await r.text()).length>0,p)} assert.equal(await (await fetch("http://127.0.0.1:3000/health")).text(),"ok")})().catch(e=>{console.error(e);process.exit(1)})'
+
   deploy:
     name: Publish image and propose pin
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     enable-openid-connect: true
     env:
@@ -33,7 +137,7 @@ jobs:
             exit 0
           fi
           # The image's inputs are what the Dockerfile copies from the repo, plus the files that build it.
-          inputs="$(sed -n 's/^COPY \([^-][^ ]*\) .*/\1/p' Dockerfile | sed 's/\*.*$//') Dockerfile .dockerignore .forgejo/workflows/deploy.yaml"
+          inputs="$(sed -n 's/^COPY \([^-][^ ]*\) .*/\1/p' Dockerfile | sed 's/\*.*$//') Dockerfile .dockerignore .forgejo/workflows/ci.yml"
           echo "image inputs:" $inputs
           for f in $(git diff --name-only "$BASE_SHA" HEAD); do
             for p in $inputs; do
@@ -133,7 +237,7 @@ jobs:
           passed=false
           for n in $(seq 1 60); do
             statuses=$(printf 'Authorization: token %s\n' "$TOKEN" | curl --fail-with-body -sS --header @- "$api/commits/$head/status")
-            state=$(echo "$statuses" | jq -r '[.statuses[]? | select(.context == "Application checks / Test and build application (pull_request)")] | sort_by(.updated_at) | last | .status // "pending"')
+            state=$(echo "$statuses" | jq -r '[.statuses[]? | select(.context == "CI / Test and build application (pull_request)")] | sort_by(.updated_at) | last | .status // "pending"')
             if [ "$state" = failure ] || [ "$state" = error ]; then echo "Pin PR $pr failed checks"; exit 1; fi
             if [ "$state" = success ]; then passed=true; break; fi
             sleep 30
