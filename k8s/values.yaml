@@ -1,7 +1,7 @@
 image:
   repository: romainecr.azurecr.io/landing-page
   # Updated by a checked image pin pull request.
-  tag: "8bfae54"
+  tag: "3414d84"
   pullPolicy: IfNotPresent
 
 replicas: 1
