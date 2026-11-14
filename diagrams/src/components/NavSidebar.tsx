@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 
 interface VersionInfo {
+  version: string
   sha: string
   deployedAt: string
 }
@@ -40,7 +41,7 @@ function VersionFooter() {
         rel="noreferrer"
         className="font-mono hover:text-slate-300 transition-colors"
       >
-        {info.sha}
+        {info.version}
       </a>
       <div title={info.deployedAt}>{formatAge(info.deployedAt, now)}</div>
     </div>

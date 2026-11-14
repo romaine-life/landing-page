@@ -19,11 +19,19 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       code: ${{ steps.diff.outputs.code }}
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - uses: romaine-life/pipeline-templates/actions/check-fetches@main
+      # One number per commit for the image, the pages and the release (PIPT-7).
+      - id: version
+        uses: romaine-life/pipeline-templates/actions/release-version@main
+        with:
+          prefix: v1.0
+          publish: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
       - id: diff
         env:
           EVENT: ${{ github.event_name }}
@@ -64,6 +72,7 @@ jobs:
       - name: Download fzt-browser release assets for /fzh
         env:
           TOKEN: ${{ secrets.PIPELINE_DISPATCH_TOKEN }}
+          VERSION: ${{ needs.changes.outputs.version }}
         run: |
           set -euo pipefail
           authcurl() { printf 'header = "Authorization: token %s"\n' "$TOKEN" | curl -K - "$@"; }
@@ -74,7 +83,7 @@ jobs:
             url=$(jq -er --arg name "$asset" '.assets[] | select(.name == $name) | .browser_download_url' /tmp/browser-release.json)
             authcurl -fLSs "$url" -o "frontend/fzh/$asset"
           done
-          jq -n --arg v "$version" --arg sha "$(git rev-parse --short=7 HEAD)" --arg date "$(date -u +%Y-%m-%dT%H:%M:%SZ)"             '{fztBrowser:$v,sha:$sha,deployedAt:$date}' > frontend/fzh/version.json
+          jq -n --arg v "$version" --arg version "$VERSION" --arg date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '{fztBrowser:$v,version:$version,deployedAt:$date}' > frontend/fzh/version.json
       - name: Download the String Box board model for /string-box
         env:
           TOKEN: ${{ secrets.PIPELINE_DISPATCH_TOKEN }}
@@ -100,6 +109,7 @@ jobs:
           tags: landing-page:check
           network: host
           build-args: |
+            APP_VERSION=${{ needs.changes.outputs.version }}
             SOURCE_SHA=${{ github.sha }}
       - name: Smoke-test container
         run: |
@@ -115,12 +125,14 @@ jobs:
 
   deploy:
     name: Publish image and propose pin
+    needs: changes
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     enable-openid-connect: true
     env:
       REGISTRY: romainecr.azurecr.io
       IMAGE: landing-page
+      TAG: ${{ needs.changes.outputs.version }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -153,15 +165,14 @@ jobs:
           client-id: ${{ vars.ARM_CLIENT_ID }}
           tenant-id: ${{ vars.ARM_TENANT_ID }}
           subscription-id: ${{ vars.ARM_SUBSCRIPTION_ID }}
-      - name: Set image tag and login
+      - name: Registry login
         if: steps.scope.outputs.changed == 'true'
-        run: |
-          echo "TAG=$(git rev-parse --short=7 HEAD)" >> "$GITHUB_ENV"
-          az acr login --name romainecr
+        run: az acr login --name romainecr
       - name: Download fzt-browser release assets for /fzh
         if: steps.scope.outputs.changed == 'true'
         env:
           TOKEN: ${{ secrets.PIPELINE_DISPATCH_TOKEN }}
+          VERSION: ${{ needs.changes.outputs.version }}
         run: |
           set -euo pipefail
           authcurl() { printf 'header = "Authorization: token %s"\n' "$TOKEN" | curl -K - "$@"; }
@@ -172,7 +183,7 @@ jobs:
             url=$(jq -er --arg name "$asset" '.assets[] | select(.name == $name) | .browser_download_url' /tmp/browser-release.json)
             authcurl -fLSs "$url" -o "frontend/fzh/$asset"
           done
-          jq -n --arg v "$version" --arg sha "$(git rev-parse --short=7 HEAD)" --arg date "$(date -u +%Y-%m-%dT%H:%M:%SZ)"             '{fztBrowser:$v,sha:$sha,deployedAt:$date}' > frontend/fzh/version.json
+          jq -n --arg v "$version" --arg version "$VERSION" --arg date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '{fztBrowser:$v,version:$version,deployedAt:$date}' > frontend/fzh/version.json
       - name: Download the String Box board model for /string-box
         if: steps.scope.outputs.changed == 'true'
         env:
@@ -201,6 +212,7 @@ jobs:
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE }}:${{ env.TAG }}
           network: host
           build-args: |
+            APP_VERSION=${{ needs.changes.outputs.version }}
             SOURCE_SHA=${{ github.sha }}
       - name: Smoke-test published image
         if: steps.scope.outputs.changed == 'true'
@@ -223,7 +235,7 @@ jobs:
           api="$GITHUB_SERVER_URL/api/v1/repos/$GITHUB_REPOSITORY"
           branch="FORGEJO-3-image-$GITHUB_RUN_ID"
           git switch -c "$branch"
-          # quoted: a short SHA of only digits would otherwise be read as a number
+          # quoted so YAML always reads the tag as a string
           sed -i "s|^  tag: .*|  tag: \"${TAG}\"|" k8s/values.yaml
           git config user.name forgejo-actions
           git config user.email forgejo-actions@noreply.romaine.life
@@ -246,15 +258,20 @@ jobs:
           body=$(jq -n --arg head "$head" '{Do:"squash",delete_branch_after_merge:true,head_commit_id:$head}')
           printf 'Authorization: token %s\n' "$TOKEN" | curl --fail-with-body -sS --header @- -H 'Content-Type: application/json' -d "$body" "$api/pulls/$pr/merge"
       - name: Release validated source
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: needs.changes.outputs.tag != ''
         env:
           TOKEN: ${{ secrets.PIPELINE_DISPATCH_TOKEN }}
+          RELEASE: ${{ needs.changes.outputs.tag }}
+          CHANGED: ${{ steps.scope.outputs.changed }}
         run: |
           set -euo pipefail
-          git fetch --tags
-          image_tag="${TAG:-$(sed -n 's/^  tag: *//p' k8s/values.yaml | tr -d '\"')}"
+          api="$GITHUB_SERVER_URL/api/v1/repos/$GITHUB_REPOSITORY"
+          # A re-run of a released commit keeps its number and release.
+          code=$(printf 'Authorization: token %s\n' "$TOKEN" | curl -sS -o /dev/null -w '%{http_code}' --header @- "$api/releases/tags/$RELEASE")
+          if [ "$code" = 200 ]; then echo "$RELEASE is already released"; exit 0; fi
+          [ "$code" = 404 ] || { echo "::error::release lookup for $RELEASE returned HTTP $code"; exit 1; }
+          # The image this commit runs: its own when it built one, else the pinned one.
+          if [ "$CHANGED" = true ]; then image_tag=$TAG; else image_tag=$(sed -n 's/^  tag: *//p' k8s/values.yaml | tr -d '\"'); fi
           test -n "$image_tag"
-          latest=$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -1)
-          if [ -z "$latest" ]; then next=v1.0.0; else next="${latest%.*}.$((${latest##*.} + 1))"; fi
-          body=$(jq -n --arg tag "$next" --arg sha "$GITHUB_SHA" --arg image "$REGISTRY/$IMAGE:$image_tag" '{tag_name:$tag,target_commitish:$sha,name:$tag,body:("Image: "+$image)}')
-          printf 'Authorization: token %s\n' "$TOKEN" | curl --fail-with-body -sS --header @- -H 'Content-Type: application/json' -d "$body" "$GITHUB_SERVER_URL/api/v1/repos/$GITHUB_REPOSITORY/releases"
+          body=$(jq -n --arg tag "$RELEASE" --arg sha "$GITHUB_SHA" --arg image "$REGISTRY/$IMAGE:$image_tag" '{tag_name:$tag,target_commitish:$sha,name:$tag,body:("Image: "+$image)}')
+          printf 'Authorization: token %s\n' "$TOKEN" | curl --fail-with-body -sS --header @- -H 'Content-Type: application/json' -d "$body" "$api/releases"

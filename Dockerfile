@@ -8,8 +8,10 @@ ENV NPM_CONFIG_REGISTRY=https://artifacts.home.romaine.life/npm/npm/
 COPY diagrams/package*.json ./
 RUN npm ci
 COPY diagrams/ ./
+# The release version the sidebar shows (a local build shows dev) and the commit it links to.
+ARG APP_VERSION=dev
 ARG SOURCE_SHA=unknown
-RUN mkdir -p public && printf '{"sha":"%s","deployedAt":"%s"}\n' "$SOURCE_SHA" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > public/version.json && npm run build
+RUN mkdir -p public && printf '{"version":"%s","sha":"%s","deployedAt":"%s"}\n' "$APP_VERSION" "$SOURCE_SHA" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > public/version.json && npm run build
 
 # Stage 2: the String Box board viewer (three.js + Vite), served under /string-box.
 # CI downloads its model, string-box.glb, into string-box/public first.
