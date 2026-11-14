@@ -243,7 +243,7 @@ jobs:
           if git diff --cached --quiet; then exit 0; fi
           git commit -m "chore: pin landing-page image $TAG"
           git push origin "$branch"
-          body=$(jq -n --arg head "$branch" '{head:$head,base:"main",title:"Deploy validated landing-page image",body:"https://openproject.romaine.life/wp/FORGEJO-3"}')
+          body=$(jq -n --arg head "$branch" '{head:$head,base:"main",title:"Deploy validated landing-page image",body:"https://openproject.home.romaine.life/wp/FORGEJO-3"}')
           pr=$(printf 'Authorization: token %s\n' "$TOKEN" | curl --fail-with-body -sS --header @- -H 'Content-Type: application/json' -d "$body" "$api/pulls" | jq -er .number)
           head=$(git rev-parse HEAD)
           passed=false
