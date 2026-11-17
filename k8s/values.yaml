@@ -1,8 +1,6 @@
-image:
-  repository: romainecr.azurecr.io/landing-page
-  # Updated by a checked image pin pull request.
-  tag: "v1.0.36"
-  pullPolicy: IfNotPresent
+# The image by tag and digest, rewritten by the suite's pin PR on each release.
+image: romainecr.azurecr.io/landing-page:v1.0.36@sha256:80e11d2a45987a54c24906ae97109fccf4799ea4ae4d8d47d2d565aff04a792d
+imagePullPolicy: IfNotPresent
 
 replicas: 1
 

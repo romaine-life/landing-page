@@ -23,8 +23,8 @@ spec:
       serviceAccountName: {{ .Values.serviceAccount.name | quote }}
       containers:
         - name: landing-page
-          image: {{ printf "%s:%s" .Values.image.repository .Values.image.tag | quote }}
-          imagePullPolicy: {{ .Values.image.pullPolicy | quote }}
+          image: {{ .Values.image | quote }}
+          imagePullPolicy: {{ .Values.imagePullPolicy | quote }}
           ports:
             - name: http
               containerPort: {{ .Values.container.port }}

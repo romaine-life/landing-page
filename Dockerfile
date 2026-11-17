@@ -14,7 +14,7 @@ ARG SOURCE_SHA=unknown
 RUN mkdir -p public && printf '{"version":"%s","sha":"%s","deployedAt":"%s"}\n' "$APP_VERSION" "$SOURCE_SHA" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > public/version.json && npm run build
 
 # Stage 2: the String Box board viewer (three.js + Vite), served under /string-box.
-# CI downloads its model, string-box.glb, into string-box/public first.
+# CI stages its model, string-box.glb, into string-box/public first, as dependencies.lock pins it.
 FROM artifacts.home.romaine.life/dockerhub/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293 AS string-box-builder
 WORKDIR /build
 ENV NPM_CONFIG_REGISTRY=https://artifacts.home.romaine.life/npm/npm/
@@ -47,4 +47,5 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
   CMD node -e "require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
-CMD ["node", "backend/server.js"]
+# An entrypoint, so the image check's `--self-test` reaches the server.
+ENTRYPOINT ["node", "backend/server.js"]

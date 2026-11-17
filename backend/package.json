@@ -4,7 +4,8 @@
   "private": true,
   "main": "server.js",
   "scripts": {
-    "test": "node --check server.js && node --check smoke-test.js && node smoke-test.js"
+    "lint": "node --check server.js",
+    "test": "node server.js --self-test --source"
   },
   "dependencies": {
     "express": "^4.22.2"
