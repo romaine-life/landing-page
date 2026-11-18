@@ -2,7 +2,7 @@
 # Kept on Node (rather than nginx/caddy) to match the house pattern across
 # every other app in the cluster (see my-homepage for the prior art).
 # Stage 1: the diagrams site (React + Vite) built into static files served under /diagrams.
-FROM artifacts.home.romaine.life/dockerhub/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293 AS diagrams-builder
+FROM artifacts.home.romaine.life/dockerhub/library/node:22-alpine@sha256:1314fb30ec37592d5845e5a160d522c0e680972aa534549940b8d73bde88481a AS diagrams-builder
 WORKDIR /build
 ENV NPM_CONFIG_REGISTRY=https://artifacts.home.romaine.life/npm/npm/
 COPY diagrams/package*.json ./
@@ -15,7 +15,7 @@ RUN mkdir -p public && printf '{"version":"%s","sha":"%s","deployedAt":"%s"}\n' 
 
 # Stage 2: the String Box board viewer (three.js + Vite), served under /string-box.
 # CI stages its model, string-box.glb, into string-box/public first, as dependencies.lock pins it.
-FROM artifacts.home.romaine.life/dockerhub/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293 AS string-box-builder
+FROM artifacts.home.romaine.life/dockerhub/library/node:22-alpine@sha256:1314fb30ec37592d5845e5a160d522c0e680972aa534549940b8d73bde88481a AS string-box-builder
 WORKDIR /build
 ENV NPM_CONFIG_REGISTRY=https://artifacts.home.romaine.life/npm/npm/
 COPY string-box/package*.json ./
@@ -24,7 +24,7 @@ COPY string-box/ ./
 RUN test -s public/string-box.glb && npm run build
 
 # Stage 3: runtime.
-FROM artifacts.home.romaine.life/dockerhub/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293
+FROM artifacts.home.romaine.life/dockerhub/library/node:22-alpine@sha256:1314fb30ec37592d5845e5a160d522c0e680972aa534549940b8d73bde88481a
 
 WORKDIR /app
 ARG NPM_CONFIG_REGISTRY=https://artifacts.home.romaine.life/npm/npm/
