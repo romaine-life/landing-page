@@ -9,6 +9,12 @@ app.get('/health', (_req, res) => res.status(200).send('ok'));
 
 app.use(express.static(FRONTEND_DIR));
 
+// fzt-browser's built files, from its npm package (PIPT-32); the rest of /fzh is frontend/fzh.
+const FZT_DIR = path.join(path.dirname(require.resolve('@romaine-life/fzt-browser/package.json')), 'dist');
+for (const file of ['fzt.wasm', 'fzt-terminal.js', 'fzt-terminal.css', 'fzt-web.js']) {
+  app.get(`/fzh/${file}`, (_req, res) => res.sendFile(file, { root: FZT_DIR }));
+}
+
 // The diagrams site is a single-page app: its own routes resolve to its index.
 app.get('/diagrams/*', (_req, res) => {
   res.sendFile(path.join(FRONTEND_DIR, 'diagrams', 'index.html'));
@@ -21,8 +27,8 @@ app.get('*', (_req, res) => {
 // The image's self-test (`--self-test`, run read-only by the web-app suite's image check):
 // every route answers with content, the built ones (/fzh, /diagrams, /string-box) included.
 // `--source` checks only what the repo itself serves, for the backend's own test.
-const SOURCE_ROUTES = ['/', '/privacy.html', '/style.css', '/unknown/path'];
-const BUILT_ROUTES = ['/fzh/', '/fzh/fzt.wasm', '/diagrams/', '/diagrams/fzt', '/string-box/', '/string-box/string-box.glb'];
+const SOURCE_ROUTES = ['/', '/privacy.html', '/style.css', '/unknown/path', '/fzh/fzt.wasm', '/fzh/fzt-web.js'];
+const BUILT_ROUTES = ['/fzh/', '/diagrams/', '/diagrams/fzt', '/string-box/', '/string-box/string-box.glb'];
 
 async function selfTest(routes) {
   const server = await new Promise((resolve) => { const s = app.listen(0, '127.0.0.1', () => resolve(s)); });

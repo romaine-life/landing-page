@@ -5,10 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "prebuild": "node -e \"require('fs').mkdirSync('public',{recursive:true});require('fs').copyFileSync(require.resolve('@romaine-life/string-box/renders/string-box.glb'),'public/string-box.glb')\"",
     "build": "vite build",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@romaine-life/string-box": "0.1.3",
     "three": "0.187.0"
   },
   "devDependencies": {

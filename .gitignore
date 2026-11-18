@@ -7,13 +7,7 @@ diagrams/node_modules/
 diagrams/dist/
 diagrams/public/version.json
 
-# the String Box viewer's build inputs and output; CI stages the model dependencies.lock pins
+# the String Box viewer's build inputs and output; the build copies in the model from its package
 string-box/node_modules/
 string-box/dist/
 string-box/public/string-box.glb
-
-# fzt-browser's release assets, staged by CI as dependencies.lock pins them
-frontend/fzh/fzt.wasm
-frontend/fzh/fzt-terminal.js
-frontend/fzh/fzt-terminal.css
-frontend/fzh/fzt-web.js
