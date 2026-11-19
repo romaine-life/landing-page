@@ -24,7 +24,17 @@ RUN --mount=type=secret,id=FORGEJO_PACKAGES_TOKEN,env=FORGEJO_PACKAGES_TOKEN npm
 COPY string-box/ ./
 RUN npm run build && test -s dist/string-box.glb
 
-# Stage 3: runtime.
+# Stage 3: the Hearing page (plain JS + Vite), served under /hearing. Its lint and tests run
+# in the web-app suite's check-test job, which runs every package with a test script.
+FROM artifacts.home.romaine.life/dockerhub/library/node:22-alpine@sha256:1314fb30ec37592d5845e5a160d522c0e680972aa534549940b8d73bde88481a AS hearing-builder
+WORKDIR /build
+ENV NPM_CONFIG_REGISTRY=https://artifacts.home.romaine.life/npm/npm/
+COPY hearing/package*.json ./
+RUN npm ci
+COPY hearing/ ./
+RUN npm run build
+
+# Stage 4: runtime.
 FROM artifacts.home.romaine.life/dockerhub/library/node:22-alpine@sha256:1314fb30ec37592d5845e5a160d522c0e680972aa534549940b8d73bde88481a
 
 WORKDIR /app
@@ -38,6 +48,7 @@ COPY backend/ backend/
 COPY frontend/ frontend/
 COPY --from=diagrams-builder /build/dist frontend/diagrams
 COPY --from=string-box-builder /build/dist frontend/string-box
+COPY --from=hearing-builder /build/dist frontend/hearing
 
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001 && \

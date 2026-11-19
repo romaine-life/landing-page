@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Hearing a tone</title>
+  <meta name="description" content="How one wave of air becomes notes: the ear splitting sound by frequency, the brain finding pitch, and why some notes rub together.">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="./src/style.css">
+</head>
+<body>
+  <header class="top">
+    <div>
+      <h1>Hearing a tone</h1>
+      <p>Melody and harmony are old words for the top layer of what happens when you hear music. Three
+        layers underneath can be shown and played: the ear splitting sound apart, the brain finding a
+        pitch, and notes rubbing against each other.</p>
+    </div>
+    <label class="volume">Volume <input id="volume" type="range" min="0" max="1" step="0.01" value="0.5"></label>
+  </header>
+
+  <main>
+    <section id="ear">
+      <h2><span class="n">1</span> The ear splits sound into frequencies</h2>
+      <p>Whatever is playing reaches you as one wave, a single line of air pressure going up and down. Inside
+        the cochlea, a membrane runs the length of a coiled tube. It is stiff at one end and floppy at the
+        other, so each spot along it shakes most for one frequency, like a keyboard laid out by the sound
+        itself. Pluck a string and watch one line become a row of peaks: the string's fundamental and its
+        overtones, at about 2×, 3×, 4× its frequency.</p>
+      <div class="controls">
+        <div class="group"><span class="caption">Sound</span>
+          <button type="button" data-source="pluck">Pluck a string</button>
+          <button type="button" data-source="sine">Pure tone</button>
+          <button type="button" data-source="sawtooth">Buzzy</button>
+          <button type="button" data-source="square">Hollow</button>
+          <button type="button" data-source="mic">Microphone</button>
+          <button type="button" data-stop>Stop</button>
+        </div>
+        <div class="group"><span class="caption">Note</span><span class="notes"></span></div>
+      </div>
+      <div class="problem" role="alert" hidden></div>
+      <canvas class="wave" aria-label="The sound's waveform as it reaches the ear"></canvas>
+      <canvas class="cochlea tall" aria-label="How strongly each spot along the cochlea's membrane responds, low notes at the left"></canvas>
+      <p class="readout" role="status"></p>
+      <p class="try">Try: a pure tone makes one peak. Buzzy and hollow have the same pitch but many peaks, and
+        that pattern is the difference you hear between them, its timbre. Hollow has only the odd ones (×1, ×3,
+        ×5). Near the top, the peaks get closer than the membrane can tell apart and blur together. With the
+        microphone, play your guitar into it.</p>
+    </section>
+
+    <section id="pitch">
+      <h2><span class="n">2</span> Pitch is something the brain computes</h2>
+      <p>A note's pitch is not simply its lowest frequency. The brain looks for how often the whole wave
+        repeats, and that comes out the same with the fundamental taken away. Phone speakers rely on this: they
+        can't produce real bass, and you hear the bass line anyway.</p>
+      <div class="controls">
+        <div class="group"><span class="caption">Note</span><span class="bases"></span></div>
+        <div class="group"><span class="caption">Harmonics</span><span class="harmonics"></span></div>
+        <div class="group"><span class="caption">Try</span><span class="presets"></span></div>
+        <div class="group"><button type="button" data-play class="primary">Play</button></div>
+      </div>
+      <div class="problem" role="alert" hidden></div>
+      <canvas class="bars tall" aria-label="The harmonics that are sounding, with the pitch heard marked"></canvas>
+      <canvas class="period" aria-label="The combined wave, with each repeat marked"></canvas>
+      <p class="readout" role="status"></p>
+      <p class="try">Try: play all ten, then take away the fundamental while it plays. The sound gets thinner,
+        but the note stays put. "Only 4, 5 and 6" is three high tones a major chord apart, and you still hear
+        the low note none of them is playing.</p>
+    </section>
+
+    <section id="rub">
+      <h2><span class="n">3</span> Two notes: where they line up, and where they rub</h2>
+      <p>When two frequencies are close but not equal, they interfere and make a fast wobble the ear hears as
+        roughness. Every note brings its overtones, so two notes are two rows of frequencies. At a fifth or an
+        octave, many overtones land on each other (green) and few are left close enough to rub (red). At a
+        half step, almost every pair rubs.</p>
+      <div class="controls">
+        <div class="group"><span class="caption">Interval</span><span class="intervals"></span></div>
+        <div class="group wide"><input type="range" min="0" max="1200" step="1" value="700" aria-label="Interval in cents"></div>
+        <div class="group"><span class="caption">Each note</span>
+          <button type="button" data-overtones="6">With overtones</button>
+          <button type="button" data-overtones="1">Pure tone only</button>
+          <button type="button" data-play class="primary">Play both notes</button>
+        </div>
+      </div>
+      <div class="problem" role="alert" hidden></div>
+      <canvas class="partials tall" aria-label="The two notes' overtones, with rubbing pairs in red and matching pairs in green"></canvas>
+      <canvas class="curve tall" aria-label="Roughness of the two notes at every interval within an octave, with the current interval marked"></canvas>
+      <p class="readout" role="status"></p>
+      <p class="try">Try: drag slowly while both notes play and listen for the smooth spots. Then switch to
+        pure tones: the dips at the fifth and the octave disappear, because they come from the overtones lining
+        up. Helmholtz worked this out in the 1860s. Liking the smooth spots is partly learned, though: the
+        Tsimane' in Bolivia, with little exposure to Western music, don't prefer them.</p>
+    </section>
+
+    <section id="wall">
+      <h2>Where this stops</h2>
+      <p>Past these three layers, the brain holds recent notes in memory, builds a sense of key, and predicts
+        what comes next, which is where melody and harmony live. Past that is the question nobody can answer
+        yet: why any of this feels like something at all. Even the second layer is still argued over, as
+        researchers disagree about how much of pitch comes from which spot shakes and how much from timing.</p>
+    </section>
+  </main>
+
+  <footer>
+    <p>The models behind the drawings: the cochlea's frequency map is Greenwood's (1990), each spot's band is
+      Glasberg and Moore's critical bandwidth (1990), pitch is found by the YIN method (de Cheveigné and
+      Kawahara, 2002), the plucked string is the Karplus-Strong method, and roughness is Sethares' fit (1993) to
+      Plomp and Levelt's listening tests (1965). The preference findings are McDermott, Lehr and Oxenham
+      (2010) and McDermott, Schultz, Undurraga and Godoy (2016).</p>
+  </footer>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>

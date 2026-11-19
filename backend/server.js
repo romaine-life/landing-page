@@ -25,10 +25,10 @@ app.get('*', (_req, res) => {
 });
 
 // The image's self-test (`--self-test`, run read-only by the web-app suite's image check):
-// every route answers with content, the built ones (/fzh, /diagrams, /string-box) included.
+// every route answers with content, the built ones (/fzh, /diagrams, /string-box, /hearing) included.
 // `--source` checks only what the repo itself serves, for the backend's own test.
 const SOURCE_ROUTES = ['/', '/privacy.html', '/style.css', '/unknown/path', '/fzh/fzt.wasm', '/fzh/fzt-web.js'];
-const BUILT_ROUTES = ['/fzh/', '/diagrams/', '/diagrams/fzt', '/string-box/', '/string-box/string-box.glb'];
+const BUILT_ROUTES = ['/fzh/', '/diagrams/', '/diagrams/fzt', '/string-box/', '/string-box/string-box.glb', '/hearing/'];
 
 async function selfTest(routes) {
   const server = await new Promise((resolve) => { const s = app.listen(0, '127.0.0.1', () => resolve(s)); });

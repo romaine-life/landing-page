@@ -12,4 +12,6 @@ diagrams/node_modules
 diagrams/dist
 string-box/node_modules
 string-box/dist
+hearing/node_modules
+hearing/dist
 k8s

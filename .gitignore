@@ -11,3 +11,7 @@ diagrams/public/version.json
 string-box/node_modules/
 string-box/dist/
 string-box/public/string-box.glb
+
+# the Hearing page's build inputs and output
+hearing/node_modules/
+hearing/dist/
