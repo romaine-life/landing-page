@@ -10,7 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@romaine-life/string-box": "0.1.3",
+    "@romaine-life/string-box": "0.1.4",
     "three": "0.187.0"
   },
   "devDependencies": {
