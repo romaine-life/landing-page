@@ -1,5 +1,5 @@
 # The image by tag and digest, rewritten by the suite's pin PR on each release.
-image: romainecr.azurecr.io/landing-page:v1.0.54@sha256:c103b6bb8c09d0f2ba4988c4ea83ed0c02ceef76fbfd6c82835c504831a1d7a7
+image: romainecr.azurecr.io/landing-page:v1.0.55@sha256:cc40163561f825e3d98079f3e256b05a9fd55b824846937bff7ae2e1a1969bd0
 imagePullPolicy: IfNotPresent
 
 replicas: 1
