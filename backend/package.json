@@ -8,7 +8,7 @@
     "test": "node server.js --self-test --source"
   },
   "dependencies": {
-    "@romaine-life/fzt-browser": "0.1.149",
+    "@romaine-life/fzt-browser": "0.1.150",
     "express": "^4.22.2"
   },
   "engines": {
