@@ -1,5 +1,16 @@
-const path = require('path');
-const express = require('express');
+import path from 'node:path';
+import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
+import express from 'express';
+import { Logger, redact } from '@romaine-life/logline';
+
+// The backend's log: the estate's one log line (romaine-life/logline, AHT-204) on stdout,
+// which the cluster ships. A message is fixed text; what varies goes in fields, and text
+// from outside the program (an error) goes through redact.
+const log = Logger.stream(process.stdout);
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const require = createRequire(import.meta.url);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -49,17 +60,17 @@ async function selfTest(routes) {
     server.closeAllConnections();
     server.close();
   }
-  console.log(`landing-page self-test passed: ${routes.length + 1} routes`);
+  log.info('landing-page self-test passed', { routes: routes.length + 1 });
 }
 
 if (process.argv.includes('--self-test')) {
   // Its result is the exit code; nothing is left open, so the process then ends.
   selfTest(process.argv.includes('--source') ? SOURCE_ROUTES : [...SOURCE_ROUTES, ...BUILT_ROUTES]).catch((error) => {
-    console.error(`landing-page self-test failed: ${error.message}`);
+    log.error('landing-page self-test failed', { error: redact(String(error?.message ?? error)) });
     process.exitCode = 1;
   });
 } else {
   app.listen(PORT, () => {
-    console.log(`landing-page listening on :${PORT}`);
+    log.info('landing-page listening', { port: PORT });
   });
 }

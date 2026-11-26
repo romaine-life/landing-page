@@ -2,13 +2,15 @@
   "name": "landing-page-backend",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "main": "server.js",
   "scripts": {
-    "lint": "node --check server.js",
-    "test": "node server.js --self-test --source"
+    "lint": "node --check server.js && node --check server.test.js",
+    "test": "node --test server.test.js"
   },
   "dependencies": {
     "@romaine-life/fzt-browser": "0.1.156",
+    "@romaine-life/logline": "0.1.5",
     "express": "^4.22.2"
   },
   "engines": {
